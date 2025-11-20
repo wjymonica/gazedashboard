@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Video Transcript Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Video Transcript Dashboard</h1>
+      <div class="file-inputs">
+        <label class="file-label">Video
+          <input id="input-video" type="file" accept="video/*,.video" />
+        </label>
+        <label class="file-label">Transcript (.srt)
+          <input id="input-srt" type="file" accept=".srt,text/plain" />
+        </label>
+        <label class="file-label">Summary (.csv)
+          <input id="input-summary" type="file" accept=".csv,text/csv" />
+        </label>
+        <label class="file-label">Categories (.csv)
+          <input id="input-categories" type="file" accept=".csv,text/csv" />
+        </label>
+        <button id="btn-gaze-toggle" class="toggle-btn" type="button" aria-pressed="false">Video Only</button>
+        <label class="file-label">Gaze Video
+          <input id="input-video-gaze" type="file" accept="video/*,.video" />
+        </label>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="video-panel">
+        <div class="video-container">
+          <video id="video" class="video" controls preload="metadata"></video>
+          <div id="gaze-overlay" class="gaze-overlay" hidden></div>
+        </div>
+        <div class="timeline-wrapper">
+          <div id="timeline" class="timeline" aria-label="Category timeline"></div>
+          <div id="playhead" class="playhead" aria-hidden="true"></div>
+        </div>
+        <div id="timeline-legend" class="timeline-legend"></div>
+      </section>
+
+      <section class="transcript-panel">
+        <div class="column summary-column">
+          <div class="column-header">
+            <h2>Summary</h2>
+            <small>Click an item to seek (if it has a timestamp)</small>
+          </div>
+          <div id="summary-list" class="list"></div>
+        </div>
+        <div class="column transcript-column">
+          <div class="column-header">
+            <h2>Transcript</h2>
+            <small>Click a cue to seek</small>
+          </div>
+          <div id="transcript-list" class="list"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <details>
+        <summary>Help</summary>
+        <ul>
+          <li>Load a video file using the Video input. Most common formats work.</li>
+          <li>Load a .srt file for the full transcript.</li>
+          <li>Load a Summary .csv with columns like: <code>start,end,summary</code> or <code>start,summary</code>. Times support <code>HH:MM:SS.mmm</code>, <code>MM:SS</code>, or seconds.</li>
+          <li>Load a Categories .csv with columns like: <code>start,end,category</code>. The colored bar segments will be clickable and will seek to the start time.</li>
+          <li>Optionally load a second video that already has the gaze overlay. Use the toggle to switch between Video Only and Video + Gaze while keeping playback time in sync.</li>
+        </ul>
+      </details>
+    </footer>
+
+    <script src="./app.js" defer></script>
+  </body>
+  </html>
+
+
