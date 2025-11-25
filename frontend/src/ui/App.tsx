@@ -5,13 +5,22 @@ const colorCache = new Map<string, string>()
 
 // Backend base URL for hosted/ngrok; empty means same-origin/proxy
 const API_BASE: string = (import.meta as any).env?.VITE_BACKEND_URL || ''
-const apiUrl = (path: string) => {
+const apiUrl = (path: string, folder?: string) => {
   const base = API_BASE ? API_BASE.replace(/\/+$/, '') : ''
   const p = path.startsWith('/') ? path : `/${path}`
-  return base + p
+  const url = base + p
+  if (folder) {
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}folder=${encodeURIComponent(folder)}`
+  }
+  return url
 }
 
-export const App: React.FC = () => {
+interface AppProps {
+  folder?: string
+}
+
+export const App: React.FC<AppProps> = ({ folder = '' }) => {
   const [apiStatus, setApiStatus] = React.useState<string>('checking...')
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null)
@@ -49,48 +58,48 @@ export const App: React.FC = () => {
   const [roleMd, setRoleMd] = React.useState<string>('')
 
   React.useEffect(() => {
-    fetch(apiUrl('/api/health'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/health', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.json() : Promise.reject(new Error(String(r.status))))
       .then(d => setApiStatus(d.status ?? 'ok'))
       .catch(() => setApiStatus('unreachable'))
-  }, [])
+  }, [folder])
 
   React.useEffect(() => {
-    fetch(apiUrl('/api/gaze'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/gaze', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.json())
       .then(setGaze)
       .catch(() => setGaze({ points: [], normalized: true }))
-  }, [])
+  }, [folder])
 
   // Auto-load provided CSV and SRT if available
   React.useEffect(() => {
     // summary.csv (plain summaries)
-    fetch(apiUrl('/api/summary'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/summary', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => setSummaryItems(normalizeSummaryRows(parseCsv(text))))
       .catch(() => {})
     // merged categories/subcategories CSV for category timelines
-    fetch(apiUrl('/api/summary_categories'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/summary_categories', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => setCategoryItems(normalizeSummaryRows(parseCsv(text))))
       .catch(() => {})
-    fetch(apiUrl('/api/transcript'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/transcript', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => setTranscriptCues(parseSrt(text)))
       .catch(() => {})
-    fetch(apiUrl('/api/standing'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/standing', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => setStandingRows(normalizeStandingRows(parseCsv(text))))
       .catch(() => {})
-    fetch(apiUrl('/api/phases'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/phases', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => setPhases(normalizePhases(parseCsv(text))))
       .catch(() => {})
-    fetch(apiUrl('/api/surgical_role_transitions'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/surgical_role_transitions', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => setRoleMd(text))
       .catch(() => setRoleMd(''))
-  }, [])
+  }, [folder])
 
   React.useEffect(() => {
     const video = videoRef.current
@@ -212,7 +221,7 @@ export const App: React.FC = () => {
 
   // Fetch quick preview segments
   React.useEffect(() => {
-    fetch(apiUrl('/api/quick_preview'), { headers: { 'ngrok-skip-browser-warning': 'true' } })
+    fetch(apiUrl('/api/quick_preview', folder), { headers: { 'ngrok-skip-browser-warning': 'true' } })
       .then(r => r.ok ? r.text() : Promise.reject(new Error(String(r.status))))
       .then(text => {
         const rows = parseCsv(text)
@@ -234,7 +243,7 @@ export const App: React.FC = () => {
         setQuickSegments(segs.sort((a, b) => a.start - b.start))
       })
       .catch(() => setQuickSegments([]))
-  }, [])
+  }, [folder])
 
   // Control playback rate when quick preview toggled
   React.useEffect(() => {
@@ -371,7 +380,7 @@ export const App: React.FC = () => {
             </label>
           </div>
           <div style={{ position: 'relative' }}>
-            <video ref={videoRef} src={apiUrl('/api/video')} controls style={{ display: 'block', width: '100%', height: 'auto' }} />
+            <video ref={videoRef} src={apiUrl('/api/video', folder)} controls style={{ display: 'block', width: '100%', height: 'auto' }} />
             <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: showGaze ? 'block' : 'none' }} />
           </div>
           {/* Surgical role transitions markdown */}
@@ -449,7 +458,7 @@ export const App: React.FC = () => {
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: 8, background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 140 }}>
                     {current?.image ? (
                       <img
-                        src={apiUrl(`/api/image/${encodeURIComponent(current.image)}`)}
+                        src={apiUrl(`/api/image/${encodeURIComponent(current.image)}`, folder)}
                         alt="Standing image"
                         style={{ maxWidth: '75%', maxHeight: 200, display: 'block', borderRadius: 4 }}
                       />

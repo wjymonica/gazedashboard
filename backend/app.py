@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_file, make_response
+from flask import Flask, jsonify, send_file, make_response, request
 from flask_cors import CORS
 import os
 from pathlib import Path
@@ -13,6 +13,15 @@ def create_app() -> Flask:
     project_root = backend_dir.parent
     data_dir = backend_dir / 'data'
     root = data_dir if data_dir.exists() else project_root
+    
+    def get_folder_root(folder: str = None):
+        """Get root path for a specific folder, or default root"""
+        if folder and data_dir.exists():
+            folder_path = data_dir / folder
+            if folder_path.exists() and folder_path.is_dir():
+                return folder_path
+        return root
+    
     video_path = root / 'lap_full_voice.mp4'
     gaze_path = root / 'gaze_positions.npy'
     quickview_path = root / 'quickview.mp4'
@@ -34,6 +43,17 @@ def create_app() -> Flask:
     @app.get("/api/version")
     def version() -> tuple[dict, int]:
         return {"service": "gaze-backend", "version": "0.1.0"}, 200
+    
+    @app.get("/api/folders")
+    def list_folders() -> tuple[dict, int]:
+        """List all available data folders"""
+        folders = []
+        if data_dir.exists():
+            for item in data_dir.iterdir():
+                if item.is_dir() and not item.name.startswith('.'):
+                    folders.append(item.name)
+        folders.sort()
+        return {"folders": folders}, 200
 
     @app.route('/api/video', methods=['GET', 'HEAD', 'OPTIONS'])
     def serve_video():
@@ -44,11 +64,14 @@ def create_app() -> Flask:
             resp.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,OPTIONS'
             if 'OPTIONS' == (os.environ.get('REQUEST_METHOD') or '').upper():
                 return resp
-        if not video_path.exists():
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        vpath = folder_root / 'lap_full_voice.mp4'
+        if not vpath.exists():
             return jsonify({"error": "Video not found"}), 404
         if (os.environ.get('REQUEST_METHOD') or '').upper() == 'HEAD':
             return ('', 200)
-        resp = send_file(video_path, mimetype='video/mp4', conditional=True)
+        resp = send_file(vpath, mimetype='video/mp4', conditional=True)
         resp.headers['Accept-Ranges'] = 'bytes'
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
@@ -62,11 +85,14 @@ def create_app() -> Flask:
             resp.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,OPTIONS'
             if 'OPTIONS' == (os.environ.get('REQUEST_METHOD') or '').upper():
                 return resp
-        if not quickview_path.exists():
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        qpath = folder_root / 'quickview.mp4'
+        if not qpath.exists():
             return jsonify({"error": "Quick view video not found"}), 404
         if (os.environ.get('REQUEST_METHOD') or '').upper() == 'HEAD':
             return ('', 200)
-        resp = send_file(quickview_path, mimetype='video/mp4', conditional=True)
+        resp = send_file(qpath, mimetype='video/mp4', conditional=True)
         resp.headers['Accept-Ranges'] = 'bytes'
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
@@ -77,8 +103,10 @@ def create_app() -> Flask:
         allowed_ext = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'}
         from pathlib import Path as _Path
         import io
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
         safe = _Path(filename).name  # prevent directory traversal
-        file_path = root / safe
+        file_path = folder_root / safe
         if not file_path.exists():
             return jsonify({"error": "Image not found"}), 404
         if file_path.suffix.lower() not in allowed_ext:
@@ -116,10 +144,13 @@ def create_app() -> Flask:
 
     @app.get('/api/gaze')
     def get_gaze():
-        if not gaze_path.exists():
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        gpath = folder_root / 'gaze_positions.npy'
+        if not gpath.exists():
             return jsonify({"points": [], "normalized": True})
         try:
-            arr = np.load(gaze_path, allow_pickle=True)
+            arr = np.load(gpath, allow_pickle=True)
             # Coerce to (N,2)
             a = np.asarray(arr)
             pts = []
@@ -146,12 +177,14 @@ def create_app() -> Flask:
 
     @app.get('/api/summary')
     def get_summary_csv():
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
         # Prefer summaryv3.csv; fallback to summaryv2.csv, summary.csv, then older merged file if not present
         candidates = [
-            root / 'summaryv3.csv',
-            root / 'summaryv2.csv',
-            root / 'summary.csv',
-            root / 'lap_neon_gaze_semantic_summary_merged.csv',
+            folder_root / 'summaryv3.csv',
+            folder_root / 'summaryv2.csv',
+            folder_root / 'summary.csv',
+            folder_root / 'lap_neon_gaze_semantic_summary_merged.csv',
         ]
         csv_path = next((p for p in candidates if p.exists()), None)
         if csv_path is None:
@@ -168,7 +201,9 @@ def create_app() -> Flask:
 
     @app.get('/api/summary_categories')
     def get_summary_categories_csv():
-        csv_path = root / 'lap_neon_gaze_semantic_summary_merged.csv'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        csv_path = folder_root / 'lap_neon_gaze_semantic_summary_merged.csv'
         if not csv_path.exists():
             return jsonify({"error": "Merged summary CSV not found"}), 404
         try:
@@ -183,7 +218,9 @@ def create_app() -> Flask:
 
     @app.get('/api/transcript')
     def get_transcript_srt():
-        srt_path = root / 'lap+neon+gaze.srt'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        srt_path = folder_root / 'lap+neon+gaze.srt'
         if not srt_path.exists():
             return jsonify({"error": "Transcript SRT not found"}), 404
         try:
@@ -198,7 +235,9 @@ def create_app() -> Flask:
 
     @app.get('/api/standing')
     def get_standing_csv():
-        csv_path = root / 'standing.csv'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        csv_path = folder_root / 'standing.csv'
         if not csv_path.exists():
             return jsonify({"error": "Standing CSV not found"}), 404
         try:
@@ -213,7 +252,9 @@ def create_app() -> Flask:
 
     @app.get('/api/quick_preview')
     def get_quick_preview_segments():
-        csv_path = root / 'uniform_samples.csv'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        csv_path = folder_root / 'uniform_samples.csv'
         if not csv_path.exists():
             return jsonify({"error": "Quick preview CSV not found"}), 404
         try:
@@ -228,7 +269,9 @@ def create_app() -> Flask:
 
     @app.get('/api/surgical_role_transitions')
     def get_surgical_role_transitions():
-        md_path = root / 'surgical_role_transitions.md'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        md_path = folder_root / 'surgical_role_transitions.md'
         if not md_path.exists():
             return jsonify({"error": "surgical_role_transitions.md not found"}), 404
         try:
@@ -242,7 +285,9 @@ def create_app() -> Flask:
             return jsonify({"error": str(exc)}), 500
     @app.get('/api/phases')
     def get_phases_csv():
-        csv_path = root / 'phases.csv'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        csv_path = folder_root / 'phases.csv'
         if not csv_path.exists():
             return jsonify({"error": "Phases CSV not found"}), 404
         try:
@@ -266,7 +311,9 @@ def create_app() -> Flask:
             if 'OPTIONS' == (os.environ.get('REQUEST_METHOD') or '').upper():
                 return resp
         import json, csv
-        csv_path = root / 'summaryv3.csv'
+        folder = request.args.get('folder', '')
+        folder_root = get_folder_root(folder)
+        csv_path = folder_root / 'summaryv3.csv'
         if not csv_path.exists():
             return jsonify({"error": "summaryv3.csv not found"}), 404
         try:
