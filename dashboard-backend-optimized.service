@@ -1,0 +1,34 @@
+[Unit]
+Description=Dashboard Flask Backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/gazedashboard/backend
+Environment="PORT=5000"
+Environment="FLASK_CORS_ANY=1"
+
+# Optimized Gunicorn settings for video streaming
+# - 4 workers for better parallel handling
+# - threads=4 allows concurrent requests per worker
+# - timeout increased for video streaming
+# - keepalive to reuse connections
+ExecStart=/root/gazedashboard/venv/bin/gunicorn \
+    --workers 4 \
+    --threads 4 \
+    --worker-class gthread \
+    --bind 127.0.0.1:5000 \
+    --timeout 300 \
+    --keepalive 5 \
+    --access-logfile /var/log/dashboard-access.log \
+    --error-logfile /var/log/dashboard-error.log \
+    --log-level info \
+    app:app
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+

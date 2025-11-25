@@ -1,8 +1,9 @@
-from flask import Flask, jsonify, send_file, make_response, request
+from flask import Flask, jsonify, send_file, make_response, request, Response
 from flask_cors import CORS
 import os
 from pathlib import Path
 import numpy as np
+import mimetypes
 
 
 def create_app() -> Flask:
@@ -60,20 +61,68 @@ def create_app() -> Flask:
         if os.environ.get('FLASK_CORS_ANY', '1') == '1':
             resp = make_response()
             resp.headers['Access-Control-Allow-Origin'] = '*'
-            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Range'
             resp.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,OPTIONS'
             if 'OPTIONS' == (os.environ.get('REQUEST_METHOD') or '').upper():
                 return resp
+        
         folder = request.args.get('folder', '')
         folder_root = get_folder_root(folder)
         vpath = folder_root / 'lap_full_voice.mp4'
+        
         if not vpath.exists():
             return jsonify({"error": "Video not found"}), 404
-        if (os.environ.get('REQUEST_METHOD') or '').upper() == 'HEAD':
-            return ('', 200)
-        resp = send_file(vpath, mimetype='video/mp4', conditional=True)
+        
+        # Get file size
+        file_size = vpath.stat().st_size
+        
+        # Handle HEAD request
+        if request.method == 'HEAD':
+            resp = make_response('', 200)
+            resp.headers['Content-Type'] = 'video/mp4'
+            resp.headers['Content-Length'] = str(file_size)
+            resp.headers['Accept-Ranges'] = 'bytes'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            return resp
+        
+        # Parse range header
+        range_header = request.headers.get('Range', None)
+        
+        if not range_header:
+            # No range requested, send entire file
+            resp = send_file(vpath, mimetype='video/mp4', conditional=True)
+            resp.headers['Accept-Ranges'] = 'bytes'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Cache-Control'] = 'public, max-age=3600'
+            return resp
+        
+        # Parse range request
+        byte_range = range_header.strip().split('=')[1]
+        start, end = byte_range.split('-')
+        start = int(start) if start else 0
+        end = int(end) if end else file_size - 1
+        end = min(end, file_size - 1)
+        length = end - start + 1
+        
+        # Create response with partial content
+        def generate():
+            chunk_size = 8192  # 8KB chunks for better streaming
+            with open(vpath, 'rb') as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = f.read(min(chunk_size, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
+        
+        resp = Response(generate(), 206, mimetype='video/mp4', direct_passthrough=True)
+        resp.headers['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+        resp.headers['Content-Length'] = str(length)
         resp.headers['Accept-Ranges'] = 'bytes'
         resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Cache-Control'] = 'public, max-age=3600'
         return resp
 
     @app.route('/api/quickview', methods=['GET', 'HEAD', 'OPTIONS'])
@@ -81,20 +130,67 @@ def create_app() -> Flask:
         if os.environ.get('FLASK_CORS_ANY', '1') == '1':
             resp = make_response()
             resp.headers['Access-Control-Allow-Origin'] = '*'
-            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Range'
             resp.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,OPTIONS'
             if 'OPTIONS' == (os.environ.get('REQUEST_METHOD') or '').upper():
                 return resp
+        
         folder = request.args.get('folder', '')
         folder_root = get_folder_root(folder)
         qpath = folder_root / 'quickview.mp4'
+        
         if not qpath.exists():
             return jsonify({"error": "Quick view video not found"}), 404
-        if (os.environ.get('REQUEST_METHOD') or '').upper() == 'HEAD':
-            return ('', 200)
-        resp = send_file(qpath, mimetype='video/mp4', conditional=True)
+        
+        # Get file size
+        file_size = qpath.stat().st_size
+        
+        # Handle HEAD request
+        if request.method == 'HEAD':
+            resp = make_response('', 200)
+            resp.headers['Content-Type'] = 'video/mp4'
+            resp.headers['Content-Length'] = str(file_size)
+            resp.headers['Accept-Ranges'] = 'bytes'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            return resp
+        
+        # Parse range header
+        range_header = request.headers.get('Range', None)
+        
+        if not range_header:
+            resp = send_file(qpath, mimetype='video/mp4', conditional=True)
+            resp.headers['Accept-Ranges'] = 'bytes'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Cache-Control'] = 'public, max-age=3600'
+            return resp
+        
+        # Parse range request
+        byte_range = range_header.strip().split('=')[1]
+        start, end = byte_range.split('-')
+        start = int(start) if start else 0
+        end = int(end) if end else file_size - 1
+        end = min(end, file_size - 1)
+        length = end - start + 1
+        
+        # Create response with partial content
+        def generate():
+            chunk_size = 8192
+            with open(qpath, 'rb') as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = f.read(min(chunk_size, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+                    yield chunk
+        
+        resp = Response(generate(), 206, mimetype='video/mp4', direct_passthrough=True)
+        resp.headers['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+        resp.headers['Content-Length'] = str(length)
         resp.headers['Accept-Ranges'] = 'bytes'
         resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Cache-Control'] = 'public, max-age=3600'
         return resp
     
     @app.get('/api/image/<path:filename>')

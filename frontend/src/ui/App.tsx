@@ -380,7 +380,13 @@ export const App: React.FC<AppProps> = ({ folder = '' }) => {
             </label>
           </div>
           <div style={{ position: 'relative' }}>
-            <video ref={videoRef} src={apiUrl('/api/video', folder)} controls style={{ display: 'block', width: '100%', height: 'auto' }} />
+            <video 
+              ref={videoRef} 
+              src={apiUrl('/api/video', folder)} 
+              controls 
+              preload="metadata"
+              style={{ display: 'block', width: '100%', height: 'auto' }} 
+            />
             <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: showGaze ? 'block' : 'none' }} />
           </div>
           {/* Surgical role transitions markdown */}
