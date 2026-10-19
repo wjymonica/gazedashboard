@@ -174,3 +174,7 @@ quick.cmproj/
 tmp/
 temp/
 
+# feedback viewer: evaluations and data stay off GitHub
+backend/annotations/
+frontend/public/feedback/*.js
+frontend/public/feedback/v1/*.js

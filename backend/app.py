@@ -536,6 +536,8 @@ def create_app() -> Flask:
         except Exception as exc:
             return jsonify({"error": str(exc)}), 500
 
+    from feedback_annotations import register_feedback_annotations  # feedback viewer (/feedback/)
+    register_feedback_annotations(app)
     return app
 
 

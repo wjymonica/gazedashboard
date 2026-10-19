@@ -117,6 +117,32 @@ export const Home: React.FC<HomeProps> = ({ onSelectFolder }) => {
                 {folder}
               </button>
             ))}
+            <button
+              onClick={() => { window.location.href = '/feedback/index.html' }}
+              style={{
+                gridColumn: '1 / -1',
+                padding: '2rem 1.5rem',
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: 'white',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 14px rgba(102, 126, 234, 0.4)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-4px)'
+                e.currentTarget.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.6)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(102, 126, 234, 0.4)'
+              }}
+            >
+              Resident A Review
+            </button>
           </div>
         )}
       </div>

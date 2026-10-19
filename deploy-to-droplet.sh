@@ -12,6 +12,7 @@ echo "🚀 Deploying optimized dashboard to droplet..."
 # Step 1: Copy backend file
 echo "📦 Copying backend code..."
 scp backend/app.py ${DROPLET_USER}@${DROPLET_IP}:${DROPLET_PATH}/backend/
+scp backend/feedback_annotations.py ${DROPLET_USER}@${DROPLET_IP}:${DROPLET_PATH}/backend/
 
 # Step 2: Copy optimized configs
 echo "⚙️  Copying configuration files..."
