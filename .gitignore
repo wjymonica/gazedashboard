@@ -178,3 +178,5 @@ temp/
 backend/annotations/
 frontend/public/feedback/*.js
 frontend/public/feedback/v1/*.js
+
+frontend/public/feedback/v2/*.js

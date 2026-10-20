@@ -2,12 +2,15 @@
 GET  /api/annotations/<coder>.json  -> that coder's saved evaluation (404 if none yet)
 POST /api/annotations/<coder>.json  -> save it (JSON body, max 5 MB; atomic; previous version kept as .bak)
 Files live in backend/annotations/ (git-ignored, outside data/ so they never show up as a dashboard folder);
-override with FEEDBACK_ANN_DIR. Coder names: letters, digits, _ or -, max 40."""
+override with FEEDBACK_ANN_DIR. Coder names: letters, digits, _ or -, max 40.
+?v=v3 (the current viewer) keeps that version's evaluations apart in backend/annotations/v3/; without it (v2) they go
+to backend/annotations/ as before."""
 import json, os, re
 from pathlib import Path
 from flask import Flask, request, send_file, make_response
 
 NAME = re.compile(r'[A-Za-z0-9_-]{1,40}')
+VERSIONS = {'': '', 'v2': '', 'v3': 'v3'}  # ?v= value -> subfolder
 
 
 def register_feedback_annotations(app: Flask) -> None:
@@ -17,7 +20,11 @@ def register_feedback_annotations(app: Flask) -> None:
     def feedback_annotations(coder: str):
         if not NAME.fullmatch(coder):
             return {'error': 'bad coder name'}, 400
-        path = ann_dir / f'{coder}.json'
+        sub = VERSIONS.get(request.args.get('v', ''))
+        if sub is None:
+            return {'error': 'bad version'}, 400
+        d = ann_dir / sub if sub else ann_dir
+        path = d / f'{coder}.json'
         if request.method == 'GET':
             if not path.exists():
                 return {'error': 'not found'}, 404
@@ -31,7 +38,7 @@ def register_feedback_annotations(app: Flask) -> None:
             json.loads(body)
         except ValueError:
             return {'error': 'not JSON'}, 400
-        ann_dir.mkdir(parents=True, exist_ok=True)
+        d.mkdir(parents=True, exist_ok=True)
         if path.exists():
             os.replace(path, path.with_suffix('.json.bak'))
         tmp = path.with_suffix('.json.tmp')

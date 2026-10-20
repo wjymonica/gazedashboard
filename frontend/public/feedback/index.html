@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Feedback Skill Map v2</title>
+<title>Feedback Skill Map v3</title>
 <style>
 :root{--bg:#f7f6f2;--fg:#1f1e1c;--mut:#6b6862;--line:#e2dfd7;--card:#fff;--soft:#f1efe9;--acc:#2f6fb0;
 --trig:#c27a12;--fb:#2f6fb0;--resp:#2e8a57;--flag:#c23b2e;
@@ -157,6 +157,7 @@ details.ev{font-size:12px;margin-top:4px}details.ev summary{cursor:pointer;color
 .hint{color:var(--mut);font-size:13px;padding:10px;border:1px dashed var(--line);border-radius:8px}
 @media (max-width:1000px){.app{grid-template-columns:1fr;height:auto}.left,.right{overflow:visible}.right{border-left:0;border-top:1px solid var(--line)}
  .nav{grid-template-columns:110px minmax(0,1fr)}.cards,.live,.trf{grid-template-columns:1fr}}
+.epst{font-size:12px;padding:2px 0}.epst .tm{margin-right:6px;font-variant-numeric:tabular-nums;font-weight:600;cursor:pointer;text-decoration:underline dotted}
 </style></head><body>
 <div class="app">
 <div class="left">
@@ -180,7 +181,7 @@ details.ev{font-size:12px;margin-top:4px}details.ev summary{cursor:pointer;color
 
 </div>
 <div class="right">
-  <h1>Case A: feedback skill map <span style="font-size:12px;color:var(--mut);font-weight:400">v2 · 5-step pipeline · <a href="v1/index.html" style="color:var(--acc)">older v1</a></span></h1>
+  <h1>Case A: feedback skill map <span style="font-size:12px;color:var(--mut);font-weight:400">v3 · tuned teaching-line rules · <a href="v2/index.html" style="color:var(--acc)">older v2</a></span></h1>
   <div class="statline" id="stats"></div>
   <details class="explain"><summary>How to read this</summary>
     <div class="trf">
@@ -208,7 +209,7 @@ details.ev{font-size:12px;margin-top:4px}details.ev summary{cursor:pointer;color
   <div id="dictview" style="display:none"></div>
 </div>
 </div>
-<script src="feedback_viewer_data_A.js?v=16d81c54ed"></script>
+<script src="feedback_viewer_data_A.js?v=46735021f8"></script>
 <script>
 const D=window.FB_DATA, M=D.moments, v=document.getElementById('v');
 const CATS=['Port Placement','Next Step Plan','Action Guidance','Anatomy Recognition','Camera and View','Hand Coordination','Bleeding Handling'];
@@ -243,17 +244,17 @@ function applyEV(){
  CLS.forEach(c=>c.members.sort((a,b)=>M[a].fs-M[b].fs));CLS.sort((a,b)=>a.id-b.id)}
 const learnerOf=m=>EV.learner[m.moment_id]||m.feedback_recipient;
 let saveT=null;
-function evChanged(){EV.updated=new Date().toISOString();if(typeof renderStats=='function')renderStats();try{localStorage.setItem('fbeval_'+(EV.coder||'_'),JSON.stringify(EV))}catch(e){}
+function evChanged(){EV.updated=new Date().toISOString();if(typeof renderStats=='function')renderStats();try{localStorage.setItem('fbeval3_'+(EV.coder||'_'),JSON.stringify(EV))}catch(e){}
  clearTimeout(saveT);if(!EV.coder){status('Enter a coder name to save to file (kept in this browser for now).',true);return}
- status('saving…');saveT=setTimeout(async()=>{try{const r=await fetch(`/api/annotations/${encodeURIComponent(EV.coder)}.json`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(EV)});
+ status('saving…');saveT=setTimeout(async()=>{try{const r=await fetch(`/api/annotations/${encodeURIComponent(EV.coder)}.json?v=v3`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(EV)});
   if(!r.ok)throw 0;status('saved '+new Date().toLocaleTimeString())}catch(e){status('could not save to file (saved in this browser only)',true)}},500)}
 function status(t,err){const el=$('savest');el.textContent=t;el.classList.toggle('err',!!err)}
 const coderOK=c=>/^[A-Za-z0-9_-]{1,40}$/.test(c);
 async function loadCoder(c){EV={coder:c,titles:{},moves:{},created:{},rating:{},learner:{},updated:null};let src='new';
- try{const r=await fetch(`/api/annotations/${encodeURIComponent(c)}.json?ts=${Date.now()}`);if(r.ok){Object.assign(EV,await r.json());src='file'}}catch(e){}
- if(src=='new'){try{const l=JSON.parse(localStorage.getItem('fbeval_'+c)||'null');if(l){Object.assign(EV,l);src='browser'}}catch(e){}}
+ try{const r=await fetch(`/api/annotations/${encodeURIComponent(c)}.json?v=v3&ts=${Date.now()}`);if(r.ok){Object.assign(EV,await r.json());src='file'}}catch(e){}
+ if(src=='new'){try{const l=JSON.parse(localStorage.getItem('fbeval3_'+c)||'null');if(l){Object.assign(EV,l);src='browser'}}catch(e){}}
  EV.coder=c;applyEV();status(src=='file'?'loaded your saved file':src=='browser'?'loaded from this browser':'new evaluation');
- try{localStorage.setItem('fbeval_last',c)}catch(e){}filter()}
+ try{localStorage.setItem('fbeval3_last',c)}catch(e){}filter()}
 function moveLoop(i,cid){const m=M[i],c=CL[cid];if(!c)return false;
  if(c.phase!=m.phase){alert(`Skills are per phase: this loop is in "${m.phase}", that skill is in "${c.phase}".`);return false}
  if(cid==m.base_cid)delete EV.moves[m.moment_id];else EV.moves[m.moment_id]=cid;
@@ -271,8 +272,8 @@ const EX={};(D.dictionary||[]).forEach(e=>(EX[e.cluster_id]??=[]).push(e));Objec
 
 let cur=null, stopAt=null, match=new Set(M.map((_,i)=>i));
 let sel={phase:null,cat:null}, openSk=new Set(), view='map', closedCat=new Set();
-try{const s=JSON.parse(localStorage.getItem('fbmapA_v2')||'null');if(s){sel=s.sel||sel;openSk=new Set(s.open||[]);if(s.cur!=null&&s.cur<M.length)cur=s.cur;view=s.view||'map';closedCat=new Set(s.closed||[])}}catch(e){}
-const save=()=>{try{localStorage.setItem('fbmapA_v2',JSON.stringify({sel,open:[...openSk],cur,view,closed:[...closedCat]}))}catch(e){}};
+try{const s=JSON.parse(localStorage.getItem('fbmapA_v3')||'null');if(s){sel=s.sel||sel;openSk=new Set(s.open||[]);if(s.cur!=null&&s.cur<M.length)cur=s.cur;view=s.view||'map';closedCat=new Set(s.closed||[])}}catch(e){}
+const save=()=>{try{localStorage.setItem('fbmapA_v3',JSON.stringify({sel,open:[...openSk],cur,view,closed:[...closedCat]}))}catch(e){}};
 
 v.addEventListener('error',()=>{$('vmsg').style.display='flex'});if(v.error)$('vmsg').style.display='flex';
 $('vf').onchange=e=>{const f=e.target.files[0];if(f){v.src=URL.createObjectURL(f);$('vmsg').style.display='none';if(cur!=null)seek(epStart(M[cur]))}};
@@ -366,7 +367,7 @@ function renderRight(){if(view=='dict'){renderDict();return}
  $('drill').querySelectorAll('.fbi-h').forEach(el=>el.onclick=()=>select(+el.dataset.i,true));
  bindEx($('drill'));bindDetail()}
 const OC={complied:['✓','var(--resp)'],partially_complied:['◐','var(--trig)'],not_complied:['✗','var(--flag)'],clarification_requested:['?','var(--acc)'],unclear:['·','var(--mut)']};
-const ocIcon=m=>{const [g,c]=OC[m.response_outcome]||OC.unclear;return `<span class="oc" style="background:${c}" title="learner: ${esc(m.response_outcome)}">${g}</span>`};
+const ocIcon=m=>'';  // outcome icons removed at the user's request; outcome still in the CSV and exports
 const short=r=>r;
 const MOD={vocal:'💬',behavior:'✋','vocal+behavior':'💬✋',none_identified:'–'};
 function strip(c,ms){const inS=new Set(ms);return `<div class="strip" title="when this skill was taught (whole case)">${D.phases.map(([a,b])=>`<div class="pb" style="left:${X(a)};width:calc(${X(b)} - ${X(a)})"></div>`).join('')}${c.members.map(i=>`<i style="left:${X(M[i].fs)};background:${COL[c.cat]};opacity:${inS.has(i)?1:.25}"></i>`).join('')}</div>`}
@@ -404,9 +405,14 @@ function detailHTML(m){const [a,b]=win(m),x=t=>((t-a)/(b-a)*100).toFixed(2)+'%',
  return `<div class="detail">
   <div class="zoom" id="zoom">${z}<div class="zph" id="zph"></div></div>
   <div class="flow">${mini('trig','Trigger',m.ts,MOD[m.trigger_modality],m.trigger_actor,m.trigger_description)}<div class="arr">→</div>${mini('fb','Feedback',m.fs,'💬',`${m.feedback_giver} → ${short(m.feedback_recipient)}`,m.feedback_summary)}<div class="arr">→</div>${mini('resp','Response',m.rs,MOD[m.response_modality],m.response_actor,m.response_description,ocIcon(m))}</div>
-  <details class="ev" id="evd"><summary>Quotes, evidence and notes</summary><div class="cards" style="margin-top:6px">${card('trig','Trigger',m.ts,m.trigger_modality,m.trigger_actor,'',m.trigger_quote,m.trigger_evidence)}${card('fb','Feedback',m.fs,m.category,m.feedback_giver,'',m.feedback_text,'')}${card('resp','Response',m.rs,m.response_modality,m.response_actor,'',m.response_quote,m.response_evidence)}</div>
+  ${epSteps(m)}<details class="ev" id="evd"><summary>Quotes, evidence and notes</summary><div class="cards" style="margin-top:6px">${card('trig','Trigger',m.ts,m.trigger_modality,m.trigger_actor,'',m.trigger_quote,m.trigger_evidence)}${card('fb','Feedback',m.fs,m.category,m.feedback_giver,'',m.feedback_text,'')}${card('resp','Response',m.rs,m.response_modality,m.response_actor,'',m.response_quote,m.response_evidence)}</div>
    <div class="notes">confidence ${esc(m.confidence)}${m.notes?` · ${esc(m.notes)}`:''}${m.qc_flags?` · <span class="fl">QC: ${esc(m.qc_flags)}</span>`:''}</div></details>
   <details class="ev"><summary>Transcript and tool actions</summary><div class="live" style="margin-top:6px"><div class="panel"><div class="tx" id="tx">${tx}</div></div><div class="panel"><div class="tools" id="tools"></div></div></div></details></div>`}
+// an episode = back-to-back feedback units on one task; list its steps (unit_summaries: "[hh:mm:ss] text || ...")
+function epSteps(m){if(!(+m.n_units>1)||!m.unit_summaries)return '';
+ const st=m.unit_summaries.split(' || ').map(x=>{const r=x.match(/^\[(\d+):(\d+):(\d+)\]\s*(.*)$/);if(!r)return `<div>${esc(x)}</div>`;const t=+r[1]*3600+ +r[2]*60+ +r[3];
+  return `<div class="epst"><span class="tm" data-t="${t}">${fmt(t)}</span> ${esc(r[4])}</div>`}).join('');
+ return `<details class="ev"><summary>Episode: ${m.n_units} feedback steps${m.task?` · ${esc(m.task)}`:''}</summary><div style="margin-top:6px">${st}</div></details>`}
 function mini(cls,title,t,icon,who,desc,extra=''){return `<div class="mini" style="border-top-color:var(--${cls})"><div class="hd" style="color:var(--${cls})">${title} <span>${icon||''}</span>${extra}${t!=null?`<span class="tm" data-t="${t}">${fmt(t)}</span>`:''}</div><div class="who">${esc(who||'')}</div><div class="d" title="${esc(desc)}">${esc(desc)}</div></div>`}
 function bindDetail(){const d=$('drill').querySelector('.detail');if(!d)return;
  d.querySelectorAll('.tm').forEach(el=>el.onclick=()=>seek(+el.dataset.t-1));
@@ -487,7 +493,7 @@ $('expL').onclick=()=>{const rows=[['coder','moment_id','feedback_start','phase'
 $('expS').onclick=()=>{const rows=[['coder','skill_id','phase','category','title_now','title_original','renamed','created_in_evaluation','n_loops_now','loop_ids']];
  CLS.forEach(c=>rows.push([EV.coder,c.id,c.phase,c.cat,c.title,BASE_TITLE[c.id]||'',EV.titles[c.id]!=null?'yes':'',c.created?'yes':'',c.members.length,c.members.map(i=>M[i].moment_id).join(' ')]));
  download(`A_eval_skills_${EV.coder||'anon'}.csv`,csv(rows))};
-{let last='';try{last=localStorage.getItem('fbeval_last')||''}catch(e){}if(last&&coderOK(last)){$('coder').value=last;loadCoder(last)}else{status('enter a coder name to start')}}
+{let last='';try{last=localStorage.getItem('fbeval3_last')||''}catch(e){}if(last&&coderOK(last)){$('coder').value=last;loadCoder(last)}else{status('enter a coder name to start')}}
 renderStats();
 if(cur==null){const cs=navSkills();if(cs.length){openSk.add(cs[0].id);cur=mm(cs[0])[0]}}
 $('tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.view==view));$('drill').style.display=view=='map'?'':'none';$('dictview').style.display=view=='dict'?'':'none';
